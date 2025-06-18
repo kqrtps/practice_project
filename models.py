@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String ,ForeignKey
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
@@ -16,3 +16,11 @@ class User(Base):
     password = Column(String)
     location_id=Column(String, ForeignKey('locations.location_id'))
 
+class Advertisement(Base):
+    __tablename__ = 'advertisement'
+    advertisement_id = Column(Integer, primary_key=True)
+    title = Column(String)
+    content = Column(String)
+    public_status = Column(Boolean)  # True - публічне, False - локальне
+    user_id = Column(Integer, ForeignKey('users.user_id'))
+    location_id = Column(String, ForeignKey('locations.location_id'))
