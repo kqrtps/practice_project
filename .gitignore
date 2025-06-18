@@ -201,3 +201,5 @@ marimo/_lsp/
 __marimo__/
 
 mydb.sqlite
+*.sqlite
+*.db
