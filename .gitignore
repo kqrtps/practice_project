@@ -203,3 +203,4 @@ __marimo__/
 mydb.sqlite
 *.sqlite
 *.db
+__pycache__/
