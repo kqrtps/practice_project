@@ -2,6 +2,7 @@
 __pycache__/
 *.py[codz]
 *$py.class
+*.pyc
 
 # C extensions
 *.so
@@ -203,5 +204,4 @@ __marimo__/
 mydbn.sqlite
 *.sqlite
 *.db
-#pycache
-**/__pycache__/
+
