@@ -5,7 +5,7 @@ Base = declarative_base()
 
 class Location(Base):
     __tablename__ = 'locations'
-    location_id = Column(String, primary_key=True)
+    location_id = Column(Integer, primary_key=True)
     location_name=Column(String)
 
 class User(Base):
