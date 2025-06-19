@@ -1,3 +1,5 @@
+
+
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from sqlalchemy.orm import declarative_base
 
@@ -5,7 +7,7 @@ Base = declarative_base()
 
 class Location(Base):
     __tablename__ = 'locations'
-    location_id = Column(String, primary_key=True)
+    location_id = Column(Integer, primary_key=True)
     location_name=Column(String)
 
 class User(Base):
@@ -14,7 +16,7 @@ class User(Base):
     user_id = Column(Integer, primary_key=True)
     username = Column(String,unique=True)
     password = Column(String)
-    location_id=Column(String, ForeignKey('locations.location_id'))
+    location_id=Column(Integer, ForeignKey('locations.location_id'))
 
 class Advertisement(Base):
     __tablename__ = 'advertisement'
@@ -23,4 +25,4 @@ class Advertisement(Base):
     content = Column(String)
     public_status = Column(Boolean)  # True - публічне, False - локальне
     user_id = Column(Integer, ForeignKey('users.user_id'))
-    location_id = Column(String, ForeignKey('locations.location_id'))
+    location_id = Column(Integer, ForeignKey('locations.location_id'))

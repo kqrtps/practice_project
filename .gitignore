@@ -199,8 +199,9 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-
-mydb.sqlite
+# database
+mydbn.sqlite
 *.sqlite
 *.db
+#pycache
 **/__pycache__/
