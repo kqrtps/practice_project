@@ -1,8 +1,13 @@
 from pydantic import BaseModel
 
-class LocationRead(BaseModel):
-    location_id: int
+class LocationBase(BaseModel):
     location_name: str
 
+class LocationCreate(LocationBase):
+    pass
+
+class LocationRead(LocationBase):
+    location_id: int
+
     class Config:
-        orm_mode = True  # дозволяє працювати з ORM-об'єктами поясни все порядково і для чого це
+        orm_mode = True
