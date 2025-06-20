@@ -1,9 +1,8 @@
 
-
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
-from sqlalchemy.orm import declarative_base
+from database import Base
 
-Base = declarative_base()
+
 
 class Location(Base):
     __tablename__ = 'locations'
