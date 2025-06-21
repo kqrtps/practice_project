@@ -32,3 +32,13 @@ def delete_location(db: Session, location_id: int) -> Location | None:
         db.delete(db_location)
         db.commit()
     return db_location
+
+
+def update_location(db: Session, location_id: int, new_name: str) -> Location | None:
+    db_location = db.query(Location).filter(Location.location_id == location_id).first()
+    if db_location is None:
+        return None
+    db_location.location_name = new_name
+    db.commit()
+    db.refresh(db_location)
+    return db_location

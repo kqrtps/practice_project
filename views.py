@@ -18,5 +18,11 @@ def read_locations(db: Session = Depends(get_db)):
     return crud.get_locations(db)
 
 
+@router.put("/locations/{location_id}", response_model=schemas.LocationRead)
+def put_location(location_id: int, location: schemas.LocationUpdate,db: Session = Depends(get_db)):
+    updated_location = crud.update_location(db, location_id, location.location_name)
+    if updated_location is None:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return updated_location
 
 

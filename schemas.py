@@ -11,3 +11,6 @@ class LocationRead(LocationBase):
 
     class Config:
         from_attributes = True
+
+class LocationUpdate(LocationBase):
+    pass
