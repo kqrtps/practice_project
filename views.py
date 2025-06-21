@@ -24,5 +24,14 @@ def put_location(location_id: int, location: schemas.LocationUpdate,db: Session 
     if updated_location is None:
         raise HTTPException(status_code=404, detail="Location not found")
     return updated_location
+@router.post("/locations/", response_model=schemas.LocationRead, status_code=201)
+def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
+    return crud.create_location(db, location)
 
+@router.delete("/locations/{location_id}", response_model=schemas.LocationRead)
+def delete_location(location_id: int, db: Session = Depends(get_db)):
+    deleted_location = crud.delete_location(db, location_id)
+    if deleted_location is None:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return deleted_location
 
