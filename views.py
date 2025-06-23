@@ -5,6 +5,9 @@ import schemas
 from database import get_db
 
 router = APIRouter()
+router_user = APIRouter()
+
+#Location
 
 @router.get("/locations/{location_id}", response_model=schemas.LocationRead)
 def read_location(location_id: int, db: Session = Depends(get_db)):
@@ -24,6 +27,7 @@ def put_location(location_id: int, location: schemas.LocationUpdate,db: Session 
     if updated_location is None:
         raise HTTPException(status_code=404, detail="Location not found")
     return updated_location
+
 @router.post("/locations/", response_model=schemas.LocationRead, status_code=201)
 def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
     return crud.create_location(db, location)
@@ -34,6 +38,36 @@ def delete_location(location_id: int, db: Session = Depends(get_db)):
     if deleted_location is None:
         raise HTTPException(status_code=404, detail="Location not found")
     return deleted_location
+
+
+#User
+
+@router_user.get("/user/{user_id}", response_model=schemas.UserRead)
+def read_user(user_id: int , db: Session = Depends(get_db)):
+    db_user = crud.get_user(db, user_id)
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return db_user
+
+@router_user.post("/user", response_model=schemas.UserRead,status_code=201)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    db_user = crud.create_user(db, user)
+    return schemas.UserRead.model_validate(db_user)
+
+@router_user.put("/user/{user_id}", response_model=schemas.UserRead)
+def update_user(user_id:int ,user: schemas.UserUpdate, db: Session = Depends(get_db)):
+    updated_user = crud.update_user(db, user_id, user)
+    if updated_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return schemas.UserRead.model_validate(updated_user)
+
+@router_user.delete("/user/{user_id}", response_model=schemas.UserRead)
+def delete_user(user_id: int, db: Session = Depends(get_db)):
+    deleted_user = crud.delete_user(db, user_id)
+    if deleted_user is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    return schemas.UserRead.model_validate(deleted_user)
+
 
 @router.post("/advertisements/", response_model=schemas.AdvertisementRead, status_code=201)
 def create_ad(ad: schemas.AdvertisementCreate, db: Session = Depends(get_db)):
@@ -63,3 +97,4 @@ def delete_ad(ad_id: int, db: Session = Depends(get_db)):
     if not deleted:
         raise HTTPException(status_code=404, detail="Advertisement not found")
     return deleted
+
