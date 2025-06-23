@@ -2,9 +2,12 @@ from sqlalchemy.orm import Session
 from models import Location, User
 from schemas import LocationCreate , LocationRead
 from schemas import UserCreate, UserRead, UserUpdate
+from models import Advertisement
+from schemas import AdvertisementCreate, AdvertisementUpdate
+
+
 
 #Location
-
 def create_location(db: Session, location: LocationCreate) -> Location:
     db_location = Location(location_name=location.location_name)
     db.add(db_location)
@@ -42,6 +45,7 @@ def update_location(db: Session, location_id: int, new_name: str) -> Location | 
     db.commit()
     db.refresh(db_location)
     return db_location
+
 
 #User
 
@@ -83,4 +87,35 @@ def update_user(db:Session,user_id:int, user:UserUpdate)-> User | None:
 
 
 
+
+# Advertisiment
+def create_advertisement(db: Session, ad: AdvertisementCreate) -> Advertisement:
+    db_ad = Advertisement(**ad.dict())
+    db.add(db_ad)
+    db.commit()
+    db.refresh(db_ad)
+    return db_ad
+
+def get_advertisement(db: Session, ad_id: int) -> Advertisement | None:
+    return db.query(Advertisement).filter(Advertisement.advertisement_id == ad_id).first()
+
+def get_advertisements(db: Session) -> list[Advertisement]:
+    return db.query(Advertisement).all()
+
+def update_advertisement(db: Session, ad_id: int, ad_data: AdvertisementUpdate) -> Advertisement | None:
+    db_ad = db.query(Advertisement).filter(Advertisement.advertisement_id == ad_id).first()
+    if not db_ad:
+        return None
+    for field, value in ad_data.dict(exclude_unset=True).items():
+        setattr(db_ad, field, value)
+    db.commit()
+    db.refresh(db_ad)
+    return db_ad
+
+def delete_advertisement(db: Session, ad_id: int) -> Advertisement | None:
+    db_ad = db.query(Advertisement).filter(Advertisement.advertisement_id == ad_id).first()
+    if db_ad:
+        db.delete(db_ad)
+        db.commit()
+    return db_ad
 
