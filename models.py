@@ -14,7 +14,7 @@ class User(Base):
 
     user_id = Column(Integer, primary_key=True)
     username = Column(String,unique=True)
-    password = Column(String)
+    password = Column(String) #тут зберігаєся хешований пароль
     location_id=Column(Integer, ForeignKey('locations.location_id'))
 
 class Advertisement(Base):
