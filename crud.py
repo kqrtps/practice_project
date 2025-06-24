@@ -86,11 +86,9 @@ def update_user(db:Session,user_id:int, user:UserUpdate)-> User | None:
 
 
 
-
-
 # Advertisiment
 def create_advertisement(db: Session, ad: AdvertisementCreate) -> Advertisement:
-    db_ad = Advertisement(**ad.dict())
+    db_ad = Advertisement(**ad.model_dump())
     db.add(db_ad)
     db.commit()
     db.refresh(db_ad)
@@ -106,7 +104,7 @@ def update_advertisement(db: Session, ad_id: int, ad_data: AdvertisementUpdate) 
     db_ad = db.query(Advertisement).filter(Advertisement.advertisement_id == ad_id).first()
     if not db_ad:
         return None
-    for field, value in ad_data.dict(exclude_unset=True).items():
+    for field, value in ad_data.model_dump(exclude_unset=True).items():
         setattr(db_ad, field, value)
     db.commit()
     db.refresh(db_ad)
