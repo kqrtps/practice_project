@@ -20,6 +20,7 @@ class User(Base):
     username = Column(String,unique=True)
     password = Column(String) #тут зберігаєся хешований пароль
     location_id=Column(Integer, ForeignKey('locations.location_id'))
+    advertisements = relationship("Advertisement", back_populates="owner")
 
 
 
@@ -31,3 +32,4 @@ class Advertisement(Base):
     public_status = Column(Boolean)  # True - публічне, False - локальне
     user_id = Column(Integer, ForeignKey('users.user_id'))
     location_id = Column(Integer, ForeignKey('locations.location_id'))
+    owner = relationship("User", back_populates="advertisements")
