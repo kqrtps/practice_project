@@ -1,6 +1,7 @@
 
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean
 from database import Base
+from sqlalchemy.orm import relationship
 
 
 
@@ -16,6 +17,7 @@ class User(Base):
     username = Column(String,unique=True)
     password = Column(String)
     location_id=Column(Integer, ForeignKey('locations.location_id'))
+    advertisements = relationship("Advertisement", back_populates="owner")
 
 class Advertisement(Base):
     __tablename__ = 'advertisement'
@@ -25,3 +27,4 @@ class Advertisement(Base):
     public_status = Column(Boolean)  # True - публічне, False - локальне
     user_id = Column(Integer, ForeignKey('users.user_id'))
     location_id = Column(Integer, ForeignKey('locations.location_id'))
+    owner = relationship("User", back_populates="advertisements")

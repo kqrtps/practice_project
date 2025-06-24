@@ -3,7 +3,8 @@ from sqlalchemy.orm import Session
 import crud
 import schemas
 from database import get_db
-
+from .models import User
+from .dependencies import get_current_user
 router = APIRouter()
 router_user = APIRouter()
 router_ad=APIRouter()
@@ -71,30 +72,61 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
 
 
 @router_ad.post("/advertisements/", response_model=schemas.AdvertisementRead, status_code=201)
-def create_ad(ad: schemas.AdvertisementCreate, db: Session = Depends(get_db)):
+def create_ad(
+        ad: schemas.AdvertisementCreate,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    ad.user_id = current_user.user_id  # 💡 юзер не може підставити чужий user_id
     return crud.create_advertisement(db, ad)
 
+
 @router_ad.get("/advertisements/", response_model=list[schemas.AdvertisementRead])
-def read_ads(db: Session = Depends(get_db)):
-    return crud.get_advertisements(db)
+def read_ads(
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    all_ads = crud.get_advertisements(db)
+    return [ad for ad in all_ads if ad.location_id == current_user.location_id]
+
 
 @router_ad.get("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
-def read_ad(ad_id: int, db: Session = Depends(get_db)):
+def read_ad(
+        ad_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
     ad = crud.get_advertisement(db, ad_id)
-    if not ad:
+    if not ad or ad.location_id != current_user.location_id:
         raise HTTPException(status_code=404, detail="Advertisement not found")
     return ad
 
+
 @router_ad.put("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
-def update_ad(ad_id: int, ad_data: schemas.AdvertisementUpdate, db: Session = Depends(get_db)):
-    updated = crud.update_advertisement(db, ad_id, ad_data)
-    if not updated:
+def update_ad(
+        ad_id: int,
+        ad_data: schemas.AdvertisementUpdate,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    ad = crud.get_advertisement(db, ad_id)
+    if not ad or ad.location_id != current_user.location_id:
         raise HTTPException(status_code=404, detail="Advertisement not found")
+
+    updated = crud.update_advertisement(db, ad_id, ad_data)
     return updated
 
+
 @router_ad.delete("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
-def delete_ad(ad_id: int, db: Session = Depends(get_db)):
-    deleted = crud.delete_advertisement(db, ad_id)
-    if not deleted:
+def delete_ad(
+        ad_id: int,
+        db: Session = Depends(get_db),
+        current_user: User = Depends(get_current_user)
+):
+    ad = crud.get_advertisement(db, ad_id)
+    if not ad or ad.location_id != current_user.location_id:
         raise HTTPException(status_code=404, detail="Advertisement not found")
+
+    deleted = crud.delete_advertisement(db, ad_id)
     return deleted
+
