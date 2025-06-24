@@ -116,7 +116,7 @@ def read_ads(
 def read_ad(
         ad_id: int,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(crud.get_current_user)
 ):
     ad = crud.get_advertisement(db, ad_id)
     if not ad or ad.location_id != current_user.location_id:
@@ -129,7 +129,7 @@ def update_ad(
         ad_id: int,
         ad_data: schemas.AdvertisementUpdate,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(crud.get_current_user)
 ):
     ad = crud.get_advertisement(db, ad_id)
     if not ad or ad.location_id != current_user.location_id:
@@ -143,7 +143,7 @@ def update_ad(
 def delete_ad(
         ad_id: int,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(crud.get_current_user)
 ):
     ad = crud.get_advertisement(db, ad_id)
     if not ad or ad.location_id != current_user.location_id:
