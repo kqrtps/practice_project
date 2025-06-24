@@ -1,10 +1,14 @@
 from sqlalchemy.orm import Session
+from database import get_db
 from models import Location, User
 from schemas import LocationCreate , LocationRead
 from schemas import UserCreate, UserRead, UserUpdate
 from models import Advertisement
 from schemas import AdvertisementCreate, AdvertisementUpdate
-
+from services import hash_password, verify_password, SECRET_KEY, ALGORITHM
+from jose import jwt , JWTError
+from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status
 
 
 #Location
@@ -37,9 +41,11 @@ def delete_location(db: Session, location_id: int) -> Location | None:
         db.commit()
     return db_location
 
-def update_location(db: Session, location_id: int, new_name: str) -> Location | None:
+def update_location(db: Session, location_id: int, new_name: str,  current_user_id: int) -> Location | None:
     db_location = db.query(Location).filter(Location.location_id == location_id).first()
     if db_location is None:
+        return None
+    if db_location.owner_id != current_user_id:
         return None
     db_location.location_name = new_name
     db.commit()
@@ -50,7 +56,11 @@ def update_location(db: Session, location_id: int, new_name: str) -> Location | 
 #User
 
 def create_user(db:Session, user:UserCreate)-> User:
-    db_user = User(password=user.password, username=user.username,location_id=user.location_id)
+    location = db.query(Location).filter(Location.location_id == user.location_id).first()
+    if location is None:
+        raise HTTPException(status_code=400, detail="Location with this ID does not exist")
+    hashed_password = hash_password(user.password)
+    db_user = User(password=hashed_password, username=user.username,location_id=user.location_id)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -83,8 +93,36 @@ def update_user(db:Session,user_id:int, user:UserUpdate)-> User | None:
     db.refresh(db_user)
     return db_user
 
+def get_user_by_username(db: Session, username: str) -> User | None:
+    return db.query(User).filter(User.username == username).first()
 
+def authenticate_user(db: Session, username: str, password: str) -> User | None:
+    user = get_user_by_username(db, username)
+    if not user:
+        return None
+    if not verify_password(password, user.password):
+        return None
+    return user
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+    except JWTError:
+        raise credentials_exception
+    user = get_user_by_username(db, username)
+    if user is None:
+        raise credentials_exception
+    return user
 
 # Advertisiment
 def create_advertisement(db: Session, ad: AdvertisementCreate) -> Advertisement:

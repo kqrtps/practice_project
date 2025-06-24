@@ -1,14 +1,17 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException , status
 from sqlalchemy.orm import Session
+from fastapi.security import OAuth2PasswordRequestForm
 import crud
 import schemas
+import services
 from database import get_db
-from .models import User
-from .dependencies import get_current_user
+from models import User, Location
+
+
 router = APIRouter()
 router_user = APIRouter()
 router_ad=APIRouter()
-
+router_login = APIRouter()
 #Location
 
 @router.get("/locations/{location_id}", response_model=schemas.LocationRead)
@@ -24,18 +27,22 @@ def read_locations(db: Session = Depends(get_db)):
 
 
 @router.put("/locations/{location_id}", response_model=schemas.LocationRead)
-def put_location(location_id: int, location: schemas.LocationUpdate,db: Session = Depends(get_db)):
-    updated_location = crud.update_location(db, location_id, location.location_name)
+def put_location(location_id: int, location: schemas.LocationUpdate, current_user: User = Depends(crud.get_current_user),db: Session = Depends(get_db)):
+    updated_location = crud.update_location(db, location_id, location.location_name, current_user.user_id)
     if updated_location is None:
-        raise HTTPException(status_code=404, detail="Location not found")
+        db_location = db.query(Location).filter(Location.location_id == location_id).first()
+        if db_location is None:
+            raise HTTPException(status_code=404, detail="Location not found")
+        else:
+            raise HTTPException(status_code=403, detail="Not authorized to update this location")
     return updated_location
 
 @router.post("/locations/", response_model=schemas.LocationRead, status_code=201)
-def create_location(location: schemas.LocationCreate, db: Session = Depends(get_db)):
+def create_location(location: schemas.LocationCreate,current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
     return crud.create_location(db, location)
 
 @router.delete("/locations/{location_id}", response_model=schemas.LocationRead)
-def delete_location(location_id: int, db: Session = Depends(get_db)):
+def delete_location(location_id: int, current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
     deleted_location = crud.delete_location(db, location_id)
     if deleted_location is None:
         raise HTTPException(status_code=404, detail="Location not found")
@@ -51,7 +58,7 @@ def read_user(user_id: int , db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-@router_user.post("/user", response_model=schemas.UserRead,status_code=201)
+@router_user.post("/user/", response_model=schemas.UserRead,status_code=201)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.create_user(db, user)
     return schemas.UserRead.model_validate(db_user)
@@ -70,6 +77,21 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return schemas.UserRead.model_validate(deleted_user)
 
+@router_login.post("/token", response_model=schemas.Token)
+def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(get_db)
+):
+    user = crud.authenticate_user(db, form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+        )
+    access_token = services.create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
+
+#Advertisement
 
 @router_ad.post("/advertisements/", response_model=schemas.AdvertisementRead, status_code=201)
 def create_ad(
