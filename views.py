@@ -97,7 +97,7 @@ def login_for_access_token(
 def create_ad(
         ad: schemas.AdvertisementCreate,
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(crud.get_current_user)
 ):
     ad.user_id = current_user.user_id  # 💡 юзер не може підставити чужий user_id
     return crud.create_advertisement(db, ad)
@@ -106,7 +106,7 @@ def create_ad(
 @router_ad.get("/advertisements/", response_model=list[schemas.AdvertisementRead])
 def read_ads(
         db: Session = Depends(get_db),
-        current_user: User = Depends(get_current_user)
+        current_user: User = Depends(crud.get_current_user)
 ):
     all_ads = crud.get_advertisements(db)
     return [ad for ad in all_ads if ad.location_id == current_user.location_id]
