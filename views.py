@@ -12,6 +12,7 @@ router = APIRouter()
 router_user = APIRouter()
 router_ad=APIRouter()
 router_login = APIRouter()
+router_r = APIRouter()
 #Location
 
 @router.get("/locations/{location_id}", response_model=schemas.LocationRead)
@@ -28,28 +29,43 @@ def read_locations(db: Session = Depends(get_db)):
 
 @router.put("/locations/{location_id}", response_model=schemas.LocationRead)
 def put_location(location_id: int, location: schemas.LocationUpdate, current_user: User = Depends(crud.get_current_user),db: Session = Depends(get_db)):
-    updated_location = crud.update_location(db, location_id, location.location_name, current_user.user_id)
-    if updated_location is None:
-        db_location = db.query(Location).filter(Location.location_id == location_id).first()
-        if db_location is None:
-            raise HTTPException(status_code=404, detail="Location not found")
-        else:
-            raise HTTPException(status_code=403, detail="Not authorized to update this location")
+    db_location = db.query(Location).filter(Location.location_id == location_id).first()
+    if not db_location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    if db_location.owner_id!=current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this location")
+
+    updated_location = crud.update_location(db, location_id, location.location_name)
     return updated_location
 
 @router.post("/locations/", response_model=schemas.LocationRead, status_code=201)
 def create_location(location: schemas.LocationCreate,current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
-    return crud.create_location(db, location)
+    return crud.create_location(db, location, current_user.user_id)
 
 @router.delete("/locations/{location_id}", response_model=schemas.LocationRead)
 def delete_location(location_id: int, current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
-    deleted_location = crud.delete_location(db, location_id)
-    if deleted_location is None:
+    db_location = db.query(Location).filter(Location.location_id == location_id).first()
+    if not db_location:
         raise HTTPException(status_code=404, detail="Location not found")
+    if db_location.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this location")
+    deleted_location = crud.delete_location(db, location_id)
     return deleted_location
 
 
 #User
+
+@router_r.post("/register", response_model=schemas.UserRead, summary="Реєстрація користувача з локацією", description="Створює нового користувача і пов'язує його з новою локацією. Локація створюється автоматично.")
+def register(user: schemas.UserCreateWithLocation, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.username == user.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    new_user = crud.create_user_with_location(
+        db, user.username, user.password, user.location_name
+    )
+    return new_user
+
 
 @router_user.get("/user/{user_id}", response_model=schemas.UserRead)
 def read_user(user_id: int , db: Session = Depends(get_db)):
@@ -58,7 +74,8 @@ def read_user(user_id: int , db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-@router_user.post("/user/", response_model=schemas.UserRead,status_code=201)
+@router_user.post("/user/", response_model=schemas.UserRead,status_code=201, summary="Реєстрація користувача з існуючою локацією",
+    description="Реєструє нового користувача та прив'язує його до вже існуючої локації. `location_id` має бути ID локації, яка вже є в базі даних. Якщо локація з таким ID не існує — буде повернута помилка.")
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.create_user(db, user)
     return schemas.UserRead.model_validate(db_user)

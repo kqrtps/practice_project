@@ -12,8 +12,8 @@ from fastapi import Depends, HTTPException, status
 
 
 #Location
-def create_location(db: Session, location: LocationCreate) -> Location:
-    db_location = Location(location_name=location.location_name)
+def create_location(db: Session, location: LocationCreate, current_user_id: int) -> Location:
+    db_location = Location(location_name=location.location_name, owner_id=current_user_id)
     db.add(db_location)
     db.commit()
     db.refresh(db_location)
@@ -41,11 +41,9 @@ def delete_location(db: Session, location_id: int) -> Location | None:
         db.commit()
     return db_location
 
-def update_location(db: Session, location_id: int, new_name: str,  current_user_id: int) -> Location | None:
+def update_location(db: Session, location_id: int, new_name: str) -> Location | None:
     db_location = db.query(Location).filter(Location.location_id == location_id).first()
     if db_location is None:
-        return None
-    if db_location.owner_id != current_user_id:
         return None
     db_location.location_name = new_name
     db.commit()
@@ -54,6 +52,21 @@ def update_location(db: Session, location_id: int, new_name: str,  current_user_
 
 
 #User
+def create_user_with_location(db: Session, username: str, password: str, location_name: str) -> User:
+    hashed_password = hash_password(password)
+    new_user = User(username=username, password=hashed_password)
+    db.add(new_user)
+    db.flush()  # отримаємо user_id, але ще не комітимо
+
+    new_location = Location(location_name=location_name, owner_id=new_user.user_id)
+    db.add(new_location)
+    db.flush()
+
+    new_user.location_id = new_location.location_id  # якщо модель має таке поле
+
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 def create_user(db:Session, user:UserCreate)-> User:
     location = db.query(Location).filter(Location.location_id == user.location_id).first()

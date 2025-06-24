@@ -1,8 +1,11 @@
+
+
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy import create_engine, inspect
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./mydbn.db"
+SQLALCHEMY_DATABASE_URL = "sqlite:///./mydbn.sqlite"
 
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
@@ -18,3 +21,5 @@ def get_db():
         yield db
     finally:
         db.close()
+inspector = inspect(engine)
+print(inspector.get_table_names())

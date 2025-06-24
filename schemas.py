@@ -38,6 +38,10 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     location_id: Optional[int] = None
 
+class UserCreateWithLocation(BaseModel):
+    username: str
+    password: str
+    location_name: str
 
 class AdvertisementBase(BaseModel):
     title: str
