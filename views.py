@@ -88,10 +88,13 @@ def update_user(user_id:int ,user: schemas.UserUpdate, db: Session = Depends(get
     return schemas.UserRead.model_validate(updated_user)
 
 @router_user.delete("/user/{user_id}", response_model=schemas.UserRead)
-def delete_user(user_id: int, db: Session = Depends(get_db)):
+def delete_user(user_id: int, current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
+    db_user = db.query(Location).filter(User.user_id == user_id).first()
+    if not db_user:
+        raise HTTPException(status_code=404, detail="Location not found")
+    if db_user.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this location")
     deleted_user = crud.delete_user(db, user_id)
-    if deleted_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
     return schemas.UserRead.model_validate(deleted_user)
 
 @router_login.post("/token", response_model=schemas.Token)
