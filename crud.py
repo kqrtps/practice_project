@@ -4,6 +4,7 @@ from schemas import LocationCreate , LocationRead
 from schemas import UserCreate, UserRead, UserUpdate
 from models import Advertisement
 from schemas import AdvertisementCreate, AdvertisementUpdate
+from services import hash_password
 
 
 
@@ -50,7 +51,8 @@ def update_location(db: Session, location_id: int, new_name: str) -> Location | 
 #User
 
 def create_user(db:Session, user:UserCreate)-> User:
-    db_user = User(password=user.password, username=user.username,location_id=user.location_id)
+    hashed_password = hash_password(user.password)
+    db_user = User(password=hashed_password, username=user.username,location_id=user.location_id)
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
