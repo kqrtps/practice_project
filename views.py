@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 import crud
@@ -7,13 +7,25 @@ import schemas
 import services
 from database import get_db
 from models import User, Location
-from typing import Optional
+from typing import Optional, Annotated
 
 router_location = APIRouter()
 router_user = APIRouter()
 router_ad = APIRouter()
 router_login = APIRouter()
 router_r = APIRouter()
+
+
+async def get_optional_current_user(
+        authorization: Annotated[str | None, Header()] = None,
+        db: Session = Depends(get_db)
+) -> User | None:
+    """Опціональна авторизація - повертає користувача або None"""
+    if not authorization or not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization.split(" ")[1]
+    return crud.get_current_user_optional(token, db)
 
 # ------------------- Location -------------------
 
@@ -149,35 +161,43 @@ def create_ad(
     ad.user_id = current_user.user_id
     return crud.create_advertisement(db, ad)
 
+
 @router_ad.get("/advertisements/", response_model=list[schemas.AdvertisementRead])
 def read_ads(
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(crud.get_current_user)
+        db: Session = Depends(get_db),
+        current_user: Optional[User] = Depends(get_optional_current_user)
 ):
+
     all_ads = crud.get_advertisements(db)
     visible_ads = []
+
     for ad in all_ads:
         if ad.public_status:
             visible_ads.append(ad)
         elif current_user and ad.location_id == current_user.location_id:
             visible_ads.append(ad)
+
     return visible_ads
+
 
 @router_ad.get("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def read_ad(
-    ad_id: int,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(crud.get_current_user)
+        ad_id: int,
+        db: Session = Depends(get_db),
+        current_user: Optional[User] = Depends(get_optional_current_user)
 ):
+
     ad = crud.get_advertisement(db, ad_id)
     if not ad:
         raise HTTPException(status_code=404, detail="Advertisement not found")
 
-    if ad.public_status or (current_user and ad.location_id == current_user.location_id):
+    if ad.public_status:
+        return ad
+
+    if current_user and ad.location_id == current_user.location_id:
         return ad
 
     raise HTTPException(status_code=404, detail="Advertisement not found")
-
 @router_ad.put("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def update_ad(
     ad_id: int,
