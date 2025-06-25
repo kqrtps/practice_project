@@ -9,60 +9,75 @@ from database import get_db
 from models import User, Location
 from typing import Optional
 
-router = APIRouter()
+router_location = APIRouter()
 router_user = APIRouter()
 router_ad = APIRouter()
 router_login = APIRouter()
+router_r = APIRouter()
 
 # ------------------- Location -------------------
 
-@router.get("/locations/{location_id}", response_model=schemas.LocationRead)
+@router_location.get("/locations/{location_id}", response_model=schemas.LocationRead)
 def read_location(location_id: int, db: Session = Depends(get_db)):
     db_location = crud.get_location(db, location_id)
     if db_location is None:
         raise HTTPException(status_code=404, detail="Location not found")
     return db_location
 
-@router.get("/locations/", response_model=list[schemas.LocationRead])
+@router_location.get("/locations/", response_model=list[schemas.LocationRead])
 def read_locations(db: Session = Depends(get_db)):
     return crud.get_locations(db)
 
-@router.put("/locations/{location_id}", response_model=schemas.LocationRead)
+@router_location.put("/locations/{location_id}", response_model=schemas.LocationRead)
 def put_location(
     location_id: int,
     location: schemas.LocationUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(crud.get_current_user),
     db: Session = Depends(get_db)
 ):
-    updated_location = crud.update_location(db, location_id, location.location_name, current_user.user_id)
-    if updated_location is None:
-        db_location = db.query(Location).filter(Location.location_id == location_id).first()
-        if db_location is None:
-            raise HTTPException(status_code=404, detail="Location not found")
-        else:
-            raise HTTPException(status_code=403, detail="Not authorized to update this location")
+    db_location = db.query(Location).filter(Location.location_id == location_id).first()
+    if not db_location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    if db_location.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this location")
+
+    updated_location = crud.update_location(db, location_id, location.location_name)
     return updated_location
 
-@router.post("/locations/", response_model=schemas.LocationRead, status_code=201)
+@router_location.post("/locations/", response_model=schemas.LocationRead, status_code=201)
 def create_location(
     location: schemas.LocationCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(crud.get_current_user),
     db: Session = Depends(get_db)
 ):
-    return crud.create_location(db, location)
+    return crud.create_location(db, location, current_user.user_id)
 
-@router.delete("/locations/{location_id}", response_model=schemas.LocationRead)
+@router_location.delete("/locations/{location_id}", response_model=schemas.LocationRead)
 def delete_location(
     location_id: int,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(crud.get_current_user),
     db: Session = Depends(get_db)
 ):
-    deleted_location = crud.delete_location(db, location_id)
-    if deleted_location is None:
+    db_location = db.query(Location).filter(Location.location_id == location_id).first()
+    if not db_location:
         raise HTTPException(status_code=404, detail="Location not found")
+    if db_location.owner_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this location")
+    deleted_location = crud.delete_location(db, location_id)
     return deleted_location
 
 # ------------------- User -------------------
+
+@router_r.post("/register", response_model=schemas.UserRead, summary="Реєстрація користувача з локацією", description="Створює нового користувача і пов'язує його з новою локацією. Локація створюється автоматично.")
+def register(user: schemas.UserCreateWithLocation, db: Session = Depends(get_db)):
+    existing = db.query(User).filter(User.username == user.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Username already exists")
+
+    new_user = crud.create_user_with_location(
+        db, user.username, user.password, user.location_name
+    )
+    return new_user
 
 @router_user.get("/user/{user_id}", response_model=schemas.UserRead)
 def read_user(user_id: int, db: Session = Depends(get_db)):
@@ -71,23 +86,40 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-@router_user.post("/user/", response_model=schemas.UserRead, status_code=201)
+@router_user.post("/user/", response_model=schemas.UserRead, status_code=201,
+    summary="Реєстрація користувача з існуючою локацією",
+    description="Реєструє нового користувача та прив'язує його до вже існуючої локації. `location_id` має бути ID локації, яка вже є в базі даних. Якщо локація з таким ID не існує — буде повернута помилка.")
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.create_user(db, user)
     return schemas.UserRead.model_validate(db_user)
 
 @router_user.put("/user/{user_id}", response_model=schemas.UserRead)
-def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(get_db)):
-    updated_user = crud.update_user(db, user_id, user)
-    if updated_user is None:
+def update_user(
+    user_id: int,
+    user: schemas.UserUpdate,
+    current_user: User = Depends(crud.get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_user = db.query(User).filter(User.user_id == user_id).first()
+    if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+    if db_user.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to update this user")
+    updated_user = crud.update_user(db, user_id, user)
     return schemas.UserRead.model_validate(updated_user)
 
 @router_user.delete("/user/{user_id}", response_model=schemas.UserRead)
-def delete_user(user_id: int, db: Session = Depends(get_db)):
-    deleted_user = crud.delete_user(db, user_id)
-    if deleted_user is None:
+def delete_user(
+    user_id: int,
+    current_user: User = Depends(crud.get_current_user),
+    db: Session = Depends(get_db)
+):
+    db_user = db.query(User).filter(User.user_id == user_id).first()
+    if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
+    if db_user.user_id != current_user.user_id:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this user")
+    deleted_user = crud.delete_user(db, user_id)
     return schemas.UserRead.model_validate(deleted_user)
 
 # ------------------- Login (OAuth2) -------------------
@@ -112,7 +144,7 @@ def login_for_access_token(
 def create_ad(
     ad: schemas.AdvertisementCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(crud.get_current_user)
 ):
     ad.user_id = current_user.user_id
     return crud.create_advertisement(db, ad)
@@ -120,7 +152,7 @@ def create_ad(
 @router_ad.get("/advertisements/", response_model=list[schemas.AdvertisementRead])
 def read_ads(
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(crud.get_current_user)
 ):
     all_ads = crud.get_advertisements(db)
     visible_ads = []
@@ -135,7 +167,7 @@ def read_ads(
 def read_ad(
     ad_id: int,
     db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_current_user)
+    current_user: Optional[User] = Depends(crud.get_current_user)
 ):
     ad = crud.get_advertisement(db, ad_id)
     if not ad:
@@ -151,7 +183,7 @@ def update_ad(
     ad_id: int,
     ad_data: schemas.AdvertisementUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(crud.get_current_user)
 ):
     ad = crud.get_advertisement(db, ad_id)
     if not ad or ad.user_id != current_user.user_id:
@@ -164,7 +196,7 @@ def update_ad(
 def delete_ad(
     ad_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(crud.get_current_user)
 ):
     ad = crud.get_advertisement(db, ad_id)
     if not ad or ad.user_id != current_user.user_id:

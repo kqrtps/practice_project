@@ -12,12 +12,20 @@ from fastapi import Depends, HTTPException, status
 
 
 #Location
-def create_location(db: Session, location: LocationCreate) -> Location:
-    db_location = Location(location_name=location.location_name)
+def get_location_by_name(db: Session, name: str) -> Location | None:
+    return db.query(Location).filter(Location.location_name == name).first()
+
+def create_location(db: Session, location: LocationCreate, current_user_id: int) -> Location:
+    loc  = get_location_by_name(db, location.location_name)
+    if  loc:
+        raise HTTPException(status_code=400, detail="Location with this name already exists")
+
+    db_location = Location(location_name=location.location_name, owner_id=current_user_id)
     db.add(db_location)
     db.commit()
     db.refresh(db_location)
     return db_location
+
 
 #def get_locations(db: Session) -> list[Location]:
     #return db.query(Location).all()
@@ -41,11 +49,9 @@ def delete_location(db: Session, location_id: int) -> Location | None:
         db.commit()
     return db_location
 
-def update_location(db: Session, location_id: int, new_name: str,  current_user_id: int) -> Location | None:
+def update_location(db: Session, location_id: int, new_name: str) -> Location | None:
     db_location = db.query(Location).filter(Location.location_id == location_id).first()
     if db_location is None:
-        return None
-    if db_location.owner_id != current_user_id:
         return None
     db_location.location_name = new_name
     db.commit()
@@ -54,6 +60,21 @@ def update_location(db: Session, location_id: int, new_name: str,  current_user_
 
 
 #User
+def create_user_with_location(db: Session, username: str, password: str, location_name: str) -> User:
+    hashed_password = hash_password(password)
+    new_user = User(username=username, password=hashed_password)
+    db.add(new_user)
+    db.flush()  # отримаємо user_id, але ще не комітимо
+
+    new_location = Location(location_name=location_name, owner_id=new_user.user_id)
+    db.add(new_location)
+    db.flush()
+
+    new_user.location_id = new_location.location_id  # якщо модель має таке поле
+
+    db.commit()
+    db.refresh(new_user)
+    return new_user
 
 def create_user(db:Session, user:UserCreate)-> User:
     location = db.query(Location).filter(Location.location_id == user.location_id).first()
