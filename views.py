@@ -81,7 +81,7 @@ def delete_location(
 
 # ------------------- User -------------------
 
-@router_r.post("/register", response_model=schemas.UserRead, summary="Реєстрація користувача з локацією", description="Створює нового користувача і пов'язує його з новою локацією. Локація створюється автоматично.")
+@router_r.post("/register", response_model=schemas.UserRead, summary="Реєстрація користувача з створенням нової локації", description="Створює нового користувача і пов'язує його з новою локацією. Локація створюється автоматично.")
 def register(user: schemas.UserCreateWithLocation, db: Session = Depends(get_db)):
     existing = db.query(User).filter(User.username == user.username).first()
     if existing:
