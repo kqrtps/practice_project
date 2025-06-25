@@ -95,7 +95,6 @@ def get_user(db:Session, user_id:int)-> UserRead | None :
     return UserRead.model_validate(us)
 
 def delete_user(db:Session, user_id:int)->User | None:
-    db_user= db.query(User).filter(User.user_id == user_id).first()
     db_user = db.query(User).filter(User.user_id == user_id).first()
     if not db_user:
         return None
