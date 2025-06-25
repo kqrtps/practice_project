@@ -1,3 +1,4 @@
+#crud
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Location, User
@@ -171,6 +172,18 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if user is None:
         raise credentials_exception
     return user
+
+def get_current_user_optional(token: str, db: Session) -> User | None:
+    """Повертає поточного користувача або None якщо токен невалідний"""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            return None
+        user = get_user_by_username(db, username)
+        return user
+    except JWTError:
+        return None
 
 # Advertisiment
 def create_advertisement(db: Session, ad: AdvertisementCreate) -> Advertisement:
