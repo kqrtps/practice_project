@@ -10,6 +10,7 @@ class Location(Base):
     location_id = Column(Integer, primary_key=True)
     location_name=Column(String)
     owner_id = Column(Integer, ForeignKey("users.user_id"))
+    advertisements = relationship("Advertisement", back_populates="location")
 
 
 

@@ -38,7 +38,6 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     location_id: Optional[int] = None
 
-
 class AdvertisementBase(BaseModel):
     title: str
     content: str
@@ -49,10 +48,10 @@ class AdvertisementCreate(AdvertisementBase):
     location_id: int
 
 class AdvertisementUpdate(BaseModel):
-    title: str | None = None
-    content: str | None = None
-    public_status: bool | None = None
-    location_id: int | None = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    public_status: Optional[bool] = None
+    location_id: Optional[int] = None
 
 class AdvertisementRead(AdvertisementBase):
     advertisement_id: int
@@ -61,7 +60,6 @@ class AdvertisementRead(AdvertisementBase):
 
     class Config:
         from_attributes = True
-
 
 class Token(BaseModel):
     access_token: str
