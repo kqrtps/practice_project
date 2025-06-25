@@ -1,21 +1,20 @@
-from fastapi import APIRouter, Depends, HTTPException , status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
 import crud
+from crud import get_current_user
 import schemas
 import services
 from database import get_db
 from models import User, Location
-from dependencies import get_current_user
 from typing import Optional
-import models
-
 
 router = APIRouter()
 router_user = APIRouter()
-router_ad=APIRouter()
+router_ad = APIRouter()
 router_login = APIRouter()
-#Location
+
+# ------------------- Location -------------------
 
 @router.get("/locations/{location_id}", response_model=schemas.LocationRead)
 def read_location(location_id: int, db: Session = Depends(get_db)):
@@ -28,9 +27,13 @@ def read_location(location_id: int, db: Session = Depends(get_db)):
 def read_locations(db: Session = Depends(get_db)):
     return crud.get_locations(db)
 
-
 @router.put("/locations/{location_id}", response_model=schemas.LocationRead)
-def put_location(location_id: int, location: schemas.LocationUpdate, current_user: User = Depends(crud.get_current_user),db: Session = Depends(get_db)):
+def put_location(
+    location_id: int,
+    location: schemas.LocationUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     updated_location = crud.update_location(db, location_id, location.location_name, current_user.user_id)
     if updated_location is None:
         db_location = db.query(Location).filter(Location.location_id == location_id).first()
@@ -41,33 +44,40 @@ def put_location(location_id: int, location: schemas.LocationUpdate, current_use
     return updated_location
 
 @router.post("/locations/", response_model=schemas.LocationRead, status_code=201)
-def create_location(location: schemas.LocationCreate,current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
+def create_location(
+    location: schemas.LocationCreate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     return crud.create_location(db, location)
 
 @router.delete("/locations/{location_id}", response_model=schemas.LocationRead)
-def delete_location(location_id: int, current_user: User = Depends(crud.get_current_user), db: Session = Depends(get_db)):
+def delete_location(
+    location_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
     deleted_location = crud.delete_location(db, location_id)
     if deleted_location is None:
         raise HTTPException(status_code=404, detail="Location not found")
     return deleted_location
 
-
-#User
+# ------------------- User -------------------
 
 @router_user.get("/user/{user_id}", response_model=schemas.UserRead)
-def read_user(user_id: int , db: Session = Depends(get_db)):
+def read_user(user_id: int, db: Session = Depends(get_db)):
     db_user = crud.get_user(db, user_id)
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return db_user
 
-@router_user.post("/user/", response_model=schemas.UserRead,status_code=201)
+@router_user.post("/user/", response_model=schemas.UserRead, status_code=201)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = crud.create_user(db, user)
     return schemas.UserRead.model_validate(db_user)
 
 @router_user.put("/user/{user_id}", response_model=schemas.UserRead)
-def update_user(user_id:int ,user: schemas.UserUpdate, db: Session = Depends(get_db)):
+def update_user(user_id: int, user: schemas.UserUpdate, db: Session = Depends(get_db)):
     updated_user = crud.update_user(db, user_id, user)
     if updated_user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -79,6 +89,8 @@ def delete_user(user_id: int, db: Session = Depends(get_db)):
     if deleted_user is None:
         raise HTTPException(status_code=404, detail="User not found")
     return schemas.UserRead.model_validate(deleted_user)
+
+# ------------------- Login (OAuth2) -------------------
 
 @router_login.post("/token", response_model=schemas.Token)
 def login_for_access_token(
@@ -94,7 +106,7 @@ def login_for_access_token(
     access_token = services.create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
-#Advertisement
+# ------------------- Advertisement -------------------
 
 @router_ad.post("/advertisements/", response_model=schemas.AdvertisementRead, status_code=201)
 def create_ad(
@@ -104,7 +116,6 @@ def create_ad(
 ):
     ad.user_id = current_user.user_id
     return crud.create_advertisement(db, ad)
-
 
 @router_ad.get("/advertisements/", response_model=list[schemas.AdvertisementRead])
 def read_ads(
@@ -120,7 +131,6 @@ def read_ads(
             visible_ads.append(ad)
     return visible_ads
 
-
 @router_ad.get("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def read_ad(
     ad_id: int,
@@ -131,14 +141,10 @@ def read_ad(
     if not ad:
         raise HTTPException(status_code=404, detail="Advertisement not found")
 
-    if ad.public_status:
-        return ad
-
-    if current_user and ad.location_id == current_user.location_id:
+    if ad.public_status or (current_user and ad.location_id == current_user.location_id):
         return ad
 
     raise HTTPException(status_code=404, detail="Advertisement not found")
-
 
 @router_ad.put("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def update_ad(
@@ -153,7 +159,6 @@ def update_ad(
 
     updated = crud.update_advertisement(db, ad_id, ad_data)
     return updated
-
 
 @router_ad.delete("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def delete_ad(
