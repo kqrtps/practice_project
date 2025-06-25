@@ -11,6 +11,7 @@ from jose import jwt , JWTError
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 
+ADMIN_USER_ID = 1
 
 #Location
 def get_location_by_name(db: Session, name: str) -> Location | None:
@@ -95,25 +96,51 @@ def get_user(db:Session, user_id:int)-> UserRead | None :
     return UserRead.model_validate(us)
 
 def delete_user(db:Session, user_id:int)->User | None:
-    db_user= db.query(User).filter(User.user_id == user_id).first()
-    if db_user:
-        db.delete(db_user)
-        db.commit()
+    db_user = db.query(User).filter(User.user_id == user_id).first()
+    if not db_user:
+        return None
+
+    # Перепризначаємо локації на адміна
+    locations = db.query(Location).filter(Location.owner_id == user_id).all()
+    for loc in locations:
+        loc.owner_id = ADMIN_USER_ID
+
+    db.delete(db_user)
+    db.commit()
     return db_user
 
-def update_user(db:Session,user_id:int, user:UserUpdate)-> User | None:
+
+def update_user(db: Session, user_id: int, user: UserUpdate) -> User | None:
     db_user = db.query(User).filter(User.user_id == user_id).first()
     if db_user is None:
         return None
-    if user.username is not None:
+
+    updated = False
+
+    if user.username is not None and user.username != db_user.username:
+        existing = db.query(User).filter(User.username == user.username).first()
+        if existing:
+            raise HTTPException(status_code=400, detail="Username already exists")
         db_user.username = user.username
+        updated = True
+
     if user.password is not None:
-        db_user.password = user.password
+        db_user.password = hash_password(user.password)
+        updated = True
+
     if user.location_id is not None:
+        location = db.query(Location).filter(Location.location_id == user.location_id).first()
+        if not location:
+            raise HTTPException(status_code=400, detail="Location with this ID does not exist")
         db_user.location_id = user.location_id
-    db.commit()
-    db.refresh(db_user)
+        updated = True
+
+    if updated:
+        db.commit()
+        db.refresh(db_user)
+
     return db_user
+
 
 def get_user_by_username(db: Session, username: str) -> User | None:
     return db.query(User).filter(User.username == username).first()
