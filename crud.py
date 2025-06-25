@@ -181,6 +181,7 @@ def create_advertisement(db: Session, ad: AdvertisementCreate) -> Advertisement:
     db.refresh(db_ad)
     return db_ad
 
+
 def get_advertisement(db: Session, ad_id: int) -> Advertisement | None:
     return db.query(Advertisement).filter(Advertisement.advertisement_id == ad_id).first()
 
