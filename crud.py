@@ -10,6 +10,7 @@ from jose import jwt , JWTError
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 
+ADMIN_USER_ID = 1
 
 #Location
 def get_location_by_name(db: Session, name: str) -> Location | None:
@@ -95,10 +96,19 @@ def get_user(db:Session, user_id:int)-> UserRead | None :
 
 def delete_user(db:Session, user_id:int)->User | None:
     db_user= db.query(User).filter(User.user_id == user_id).first()
-    if db_user:
-        db.delete(db_user)
-        db.commit()
+    db_user = db.query(User).filter(User.user_id == user_id).first()
+    if not db_user:
+        return None
+
+    # Перепризначаємо локації на адміна
+    locations = db.query(Location).filter(Location.owner_id == user_id).all()
+    for loc in locations:
+        loc.owner_id = ADMIN_USER_ID
+
+    db.delete(db_user)
+    db.commit()
     return db_user
+
 
 def update_user(db: Session, user_id: int, user: UserUpdate) -> User | None:
     db_user = db.query(User).filter(User.user_id == user_id).first()
