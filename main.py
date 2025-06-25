@@ -1,4 +1,4 @@
-#main
+
 from fastapi import FastAPI
 from views import router_location, router_user, router_ad, router_login, router_r  # імпортуємо router з views.py
 
