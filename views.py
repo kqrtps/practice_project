@@ -8,6 +8,8 @@ from database import get_db
 from models import User, Location
 from dependencies import get_current_user
 from typing import Optional
+import models
+
 
 router = APIRouter()
 router_user = APIRouter()
