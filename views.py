@@ -1,3 +1,4 @@
+#views
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.orm import Session
 from fastapi.security import OAuth2PasswordRequestForm
@@ -152,22 +153,11 @@ def login_for_access_token(
 
 # ------------------- Advertisement -------------------
 
-@router_ad.post("/advertisements/", response_model=schemas.AdvertisementRead, status_code=201)
-def create_ad(
-    ad: schemas.AdvertisementCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(crud.get_current_user)
-):
-    ad.user_id = current_user.user_id
-    return crud.create_advertisement(db, ad)
-
-
 @router_ad.get("/advertisements/", response_model=list[schemas.AdvertisementRead])
 def read_ads(
         db: Session = Depends(get_db),
         current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-
     all_ads = crud.get_advertisements(db)
     visible_ads = []
 
@@ -177,8 +167,8 @@ def read_ads(
         elif current_user and ad.location_id == current_user.location_id:
             visible_ads.append(ad)
 
-    return visible_ads
 
+    return visible_ads
 
 @router_ad.get("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def read_ad(
@@ -186,7 +176,6 @@ def read_ad(
         db: Session = Depends(get_db),
         current_user: Optional[User] = Depends(get_optional_current_user)
 ):
-
     ad = crud.get_advertisement(db, ad_id)
     if not ad:
         raise HTTPException(status_code=404, detail="Advertisement not found")
@@ -198,6 +187,19 @@ def read_ad(
         return ad
 
     raise HTTPException(status_code=404, detail="Advertisement not found")
+
+@router_ad.post("/advertisements/", response_model=schemas.AdvertisementRead, status_code=201)
+def create_ad(
+    ad: schemas.AdvertisementCreate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(crud.get_current_user)
+):
+
+    ad.user_id = current_user.user_id
+
+    if not hasattr(ad, 'location_id') or ad.location_id is None:
+        ad.location_id = current_user.location_id
+    return crud.create_advertisement(db, ad)
 @router_ad.put("/advertisements/{ad_id}", response_model=schemas.AdvertisementRead)
 def update_ad(
     ad_id: int,

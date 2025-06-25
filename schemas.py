@@ -1,3 +1,4 @@
+#schemas
 from pydantic import BaseModel
 from typing import Optional
 
@@ -44,20 +45,24 @@ class UserCreateWithLocation(BaseModel):
     password: str
     location_name: str
 
+
 class AdvertisementBase(BaseModel):
     title: str
     content: str
     public_status: bool = True
 
+
 class AdvertisementCreate(AdvertisementBase):
-    user_id: int
-    location_id: int
+    user_id: Optional[int] = None  # Буде встановлено автоматично
+    location_id: Optional[int] = None  # Буде встановлено автоматично
+
 
 class AdvertisementUpdate(BaseModel):
     title: Optional[str] = None
     content: Optional[str] = None
     public_status: Optional[bool] = None
     location_id: Optional[int] = None
+
 
 class AdvertisementRead(AdvertisementBase):
     advertisement_id: int
